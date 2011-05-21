@@ -1,4 +1,4 @@
-#import <Foundation/Foundation.h>
+#import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
 /*
@@ -32,6 +32,7 @@
 	NSDictionary *response;
 }
 
+- (id)runWorkspace;
 - (id)run:(NSString *)identifier;
 - (void)gotNotification:(NSNotification *)notif;
 - (NSDictionary *)gotResponse;
@@ -59,7 +60,8 @@ void help() {
 }
 
 void version() {
-	fprintf(stderr, "choc r1 (2011-02-27)\n");
+//	fprintf(stderr, "choc r1 (2011-02-27)\n");
+	fprintf(stderr, "choc r2 (2011-05-21)\n");
 }
 
 int main (int argc, char * const * argv) {
@@ -80,16 +82,19 @@ int main (int argc, char * const * argv) {
 	int option_index = 0;
 	int i = 0;
 	
+	id previousapp = [NSRunningApplication currentApplication];
+	NSLog(@"previousapp = %@", previousapp);
+	
 	while (1)
 	{
     	static struct option long_options[] = {
         	/* These options set a flag. */
-	        {"async",			no_argument, &userAsync,		'a'},
-	        {"wait",			no_argument, &userWait,			'w'},
-	        {"change-dir",		no_argument, &shouldChangeDir,	'd'},
-		    {"no-reactivation",	no_argument, &noReactiviation,	'n'},
-	        {"help",			no_argument, 0,					'h'},
-	        {"version",			no_argument, 0,					'v'},
+	        {"async",			no_argument, 0,	'a'},
+	        {"wait",			no_argument, 0,	'w'},
+	        {"change-dir",		no_argument, 0,	'd'},
+		    {"no-reactivation",	no_argument, 0,	'n'},
+	        {"help",			no_argument, 0,	'h'},
+	        {"version",			no_argument, 0,	'v'},
         	{0, 0, 0, 0}
         };
         		
@@ -98,7 +103,16 @@ int main (int argc, char * const * argv) {
 		
 		i++;
 		
-		if (c == 'h')
+		if (c == 'a')
+			userAsync = YES;
+		else if (c == 'w')
+			userWait = YES;
+		else if (c == 'd')
+			shouldChangeDir = YES;
+		else if (c == 'n')
+			noReactiviation = YES;
+		
+		else if (c == 'h')
 		{
 			help();
 			exit(0);
@@ -117,7 +131,7 @@ int main (int argc, char * const * argv) {
 			break;
 		}
 	}
-		
+	
 	if (userWait)
 		shouldWait = YES;
 	else if (userAsync)
@@ -132,21 +146,70 @@ int main (int argc, char * const * argv) {
 	while (i < argc)
 	{
 		const char *opt = argv[i++];
-		[remainingOptions addObject:[[[NSString alloc] initWithUTF8String:opt] autorelease]];
+		[remainingOptions addObject:[[NSURL fileURLWithPath:[[[[NSString alloc] initWithUTF8String:opt] autorelease] stringByStandardizingPath]] path]];
 	}
 		
 	if ([remainingOptions count] >= 2)
 		shouldWait = NO;
 	
+	NSData *inData = nil;
+	if ([remainingOptions count] == 0 || !stdin_isa_tty)
+	{
+		inData = [[NSFileHandle fileHandleWithStandardInput] readDataToEndOfFile];
+	}
+	
 	NSString *identifier = [NSString stringWithFormat:@"%lf", [NSDate timeIntervalSinceReferenceDate]];
 	
 	NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
 	[userInfo setValue:[remainingOptions copy] forKey:@"files"];
-	[userInfo setValue:[NSNumber numberWithBool:noReactiviation] forKey:@"no-reactivation"];
+	if (inData)
+		[userInfo setValue:inData forKey:@"data"];
+	[userInfo setValue:[NSNumber numberWithBool:shouldChangeDir] forKey:@"change-working-directory"];
 	
 	if (shouldChangeDir)
 		[userInfo setValue:[[NSFileManager defaultManager] currentDirectoryPath] forKey:@"working-directory"];
+	
+	BOOL isLaunched = NO;
+	NSArray *runningApps = [[NSWorkspace sharedWorkspace] launchedApplications];
+	for (NSDictionary *rapp in runningApps)
+	{
+		NSString *bident = [rapp valueForKey:@"NSApplicationBundleIdentifier"];
+		if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"])
+		{
+			isLaunched = YES;
+			break;
+		}
+	}
+	
+	// Has launched?
+	if (!isLaunched)
+	{
+		[[NSWorkspace sharedWorkspace] launchApplication:@"Chocolat"];
 		
+		// How many seconds do we wait?
+		NSRunLoop *theRL = [NSRunLoop currentRunLoop];
+		
+		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+		ChocWaiter *waiter = [[[ChocWaiter alloc] init] runWorkspace];
+		
+		NSDictionary *response = nil;
+		
+		while (1)
+		{
+			if (response = [waiter gotResponse])
+			{
+				NSString *bident = [[response valueForKey:@"NSWorkspaceApplicationKey"] valueForKey:@"bundleIdentifier"];
+				if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"])
+				{
+					sleep(1);
+					break;
+				}
+			}
+			
+			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+		}
+	}
+	
 	[[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"net.fileability.choc-opened" object:identifier userInfo:userInfo deliverImmediately:NO];
 	
 	if (shouldWait)
@@ -165,8 +228,25 @@ int main (int argc, char * const * argv) {
 			
 			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
 		}
+		
+		// Output the data...
+		if (!stdout_isa_tty)
+		{
+			NSData *responseData = [response objectForKey:@"data"];
+			if (responseData)
+			{
+				NSFileHandle *stdoutFileHandle = [NSFileHandle fileHandleWithStandardOutput];
+				[stdoutFileHandle writeData:responseData];
+			}
+		}
+		
+		// Reactivate the calling app
+		if (!noReactiviation)
+		{
+			[previousapp activateWithOptions:0];
+		}
 	}
-	
+		
     // insert code here...
     [pool drain];
     return 0;
@@ -174,6 +254,11 @@ int main (int argc, char * const * argv) {
 
 @implementation ChocWaiter
 
+- (id)runWorkspace
+{
+	[[[NSWorkspace sharedWorkspace] notificationCenter] addObserver:self selector:@selector(gotNotification:) name:NSWorkspaceDidLaunchApplicationNotification object:nil];
+	return self;
+}
 - (id)run:(NSString *)identifier
 {
 	[[NSDistributedNotificationCenter defaultCenter] addObserver:self selector:@selector(gotNotification:) name:@"net.fileability.choc-closed" object:identifier suspensionBehavior:NSNotificationSuspensionBehaviorDeliverImmediately];
