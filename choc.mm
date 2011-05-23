@@ -83,7 +83,6 @@ int main (int argc, char * const * argv) {
 	int i = 0;
 	
 	id previousapp = [NSRunningApplication currentApplication];
-	NSLog(@"previousapp = %@", previousapp);
 	
 	while (1)
 	{
@@ -146,7 +145,10 @@ int main (int argc, char * const * argv) {
 	while (i < argc)
 	{
 		const char *opt = argv[i++];
-		[remainingOptions addObject:[[NSURL fileURLWithPath:[[[[NSString alloc] initWithUTF8String:opt] autorelease] stringByStandardizingPath]] path]];
+		NSString *p = [[[NSString alloc] initWithUTF8String:opt] autorelease];
+		p = [[[NSURL fileURLWithPath:p] path] stringByStandardizingPath];
+		
+		[remainingOptions addObject:p];
 	}
 		
 	if ([remainingOptions count] >= 2)
