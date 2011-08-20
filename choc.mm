@@ -212,7 +212,7 @@ int main (int argc, char * const * argv) {
 		}
 	}
 	
-	[[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"net.fileability.choc-opened" object:identifier userInfo:userInfo deliverImmediately:NO];
+	[[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"net.fileability.choc-opened" object:identifier userInfo:userInfo deliverImmediately:YES];
 	
 	if (shouldWait)
 	{
