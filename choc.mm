@@ -92,7 +92,13 @@ int main (int argc, char * const * argv) {
 	
     // Do an update check in the background
     if (stderr_isa_tty) {
-        [UpdateChecker check];
+        
+        // So I'm disabling update checking for now, since it's making me a bit nervous since it checks so damn often
+        // What we really want to do is check every so often - like every 30 days or whatever
+        // In fact, it might be better to have the check in Chocolat itself
+        // IDEA: We could also check permissions in Chocolat
+        // [UpdateChecker check];
+        
     }
     
 	/* getopt_long stores the option index here. */
