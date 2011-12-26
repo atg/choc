@@ -1,6 +1,8 @@
 #import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
+#define CHOC_VERSION 3
+
 /*
 	Usage: mate [-awl<number>rdnhv] [file ...]
 	Options:
@@ -39,6 +41,13 @@
 
 @end
 
+
+@interface UpdateChecker : NSObject { }
+
++ (void)check;
+
+@end
+
 void help() {
 	fprintf(stderr,
 "Usage: choc [-awdnhv] [file ...]\n"
@@ -61,12 +70,14 @@ void help() {
 
 void version() {
 //	fprintf(stderr, "choc r1 (2011-02-27)\n");
-	fprintf(stderr, "choc r2 (2011-05-21)\n");
+//	fprintf(stderr, "choc r2 (2011-05-21)\n");
+	fprintf(stderr, "choc r%d (2011-12-19)\n", CHOC_VERSION);
 }
 
 int main (int argc, char * const * argv) {
+    
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	
+    
 	BOOL shouldWait = NO;
 	
 	int userWait = NO;
@@ -77,7 +88,13 @@ int main (int argc, char * const * argv) {
 	
 	BOOL stdin_isa_tty = isatty(0);
 	BOOL stdout_isa_tty = isatty(1);
+	BOOL stderr_isa_tty = isatty(2);
 	
+    // Do an update check in the background
+    if (stderr_isa_tty) {
+        [UpdateChecker check];
+    }
+    
 	/* getopt_long stores the option index here. */
 	int option_index = 0;
 	int i = 0;
@@ -150,16 +167,18 @@ int main (int argc, char * const * argv) {
 		
 		[remainingOptions addObject:p];
 	}
-		
-	if ([remainingOptions count] >= 2)
+    BOOL shouldBlindLaunch = ([remainingOptions count] == 0) && stdin_isa_tty && stdout_isa_tty;
+	if (shouldBlindLaunch || [remainingOptions count] >= 2)
 		shouldWait = NO;
 	
-	NSData *inData = nil;
-	if ([remainingOptions count] == 0 || !stdin_isa_tty)
-	{
-		inData = [[NSFileHandle fileHandleWithStandardInput] readDataToEndOfFile];
+    NSData *inData = nil;
+    if (!shouldBlindLaunch) {
+        if ([remainingOptions count] == 0 || !stdin_isa_tty) {
+            
+            inData = [[NSFileHandle fileHandleWithStandardInput] readDataToEndOfFile];
+        }
 	}
-	
+    
 	NSString *identifier = [NSString stringWithFormat:@"%lf", [NSDate timeIntervalSinceReferenceDate]];
 	
 	NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
@@ -186,6 +205,9 @@ int main (int argc, char * const * argv) {
 	// Has launched?
 	if (!isLaunched)
 	{
+        
+        /* NSRunningApplicatioN* app = [[NSWorkspace sharedWorkspace] launchApplicationAtURL:<#(NSURL *)#> options:<#(NSWorkspaceLaunchOptions)#> configuration:<#(NSDictionary *)#> error:<#(NSError **)#>]; */
+        
 		[[NSWorkspace sharedWorkspace] launchApplication:@"Chocolat"];
 		
 		// How many seconds do we wait?
@@ -203,7 +225,9 @@ int main (int argc, char * const * argv) {
 				NSString *bident = [[response valueForKey:@"NSWorkspaceApplicationKey"] valueForKey:@"bundleIdentifier"];
 				if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"])
 				{
-					sleep(1);
+					// sleep(1);
+                    // [NSThread sleepForTimeInterval:0.1];
+                    
 					break;
 				}
 			}
@@ -212,6 +236,13 @@ int main (int argc, char * const * argv) {
 		}
 	}
 	
+    if (shouldBlindLaunch) {
+        [[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] activateWithOptions:0];
+        
+        [pool drain];
+        return 0;
+    }
+    
 	[[NSDistributedNotificationCenter defaultCenter] postNotificationName:@"net.fileability.choc-opened" object:identifier userInfo:userInfo deliverImmediately:YES];
 	
 	if (shouldWait)
@@ -273,6 +304,27 @@ int main (int argc, char * const * argv) {
 - (NSDictionary *)gotResponse
 {
 	return response;
+}
+
+@end
+
+
+
+@implementation UpdateChecker
+
++ (void)check {
+    
+    [self performSelectorInBackground:@selector(performCheck) withObject:nil];
+    
+}
++ (void)performCheck {
+    NSInteger i = [[[NSString stringWithContentsOfURL:[NSURL URLWithString:@"http://chocolatapp.com/choc/version.txt"] encoding:NSUTF8StringEncoding error:NULL] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] intValue];
+    if (i <= 0)
+        return;
+    if (i <= CHOC_VERSION)
+        return;
+    
+    fprintf(stderr, "!!! choc is out of date. Please reinstall a new version !!!\n");
 }
 
 @end
