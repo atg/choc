@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
-#define CHOC_VERSION 3
+#define CHOC_VERSION 5
 
 /*
 	Usage: mate [-awl<number>rdnhv] [file ...]
@@ -54,7 +54,7 @@ void help() {
 "Options:\n"
 " -a, --async\t\tDo not wait for the user to close the file in Chocolat. [default if output is ignored]\n"
 " -w, --wait\t\tWait for file to be closed by Chocolat. [default if output is piped]\n"
-" -d, --change-dir\tChange Chocolat's working directory to that of the file.\n"
+//" -d, --change-dir\tChange Chocolat's working directory to that of the file.\n"
 " -n, --no-reactivation\tAfter editing with -w, do not reactivate the calling app.\n"
 " -h, --help\t\tShow this information.\n"
 " -v, --version\t\tPrint version information.\n"
@@ -71,7 +71,8 @@ void help() {
 void version() {
 //	fprintf(stderr, "choc r1 (2011-02-27)\n");
 //	fprintf(stderr, "choc r2 (2011-05-21)\n");
-	fprintf(stderr, "choc r%d (2011-12-19)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r3 (2011-12-19)\n", CHOC_VERSION);
+	fprintf(stderr, "choc r%d (2012-02-27)\n", CHOC_VERSION);
 }
 
 int main (int argc, char * const * argv) {
@@ -237,11 +238,11 @@ int main (int argc, char * const * argv) {
 					break;
 				}
 			}
-			
-			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+//			NSLog(@"Waiting to launch");
+			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 	}
-	
+//	NSLog(@"Launched");
     if (shouldBlindLaunch) {
         [[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] activateWithOptions:0];
         
@@ -265,19 +266,22 @@ int main (int argc, char * const * argv) {
 			if (response = [waiter gotResponse])
 				break;
 			
-			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+//			NSLog(@"response: %d", response);
+			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 		
 		// Output the data...
 		if (!stdout_isa_tty)
 		{
 			NSData *responseData = [response objectForKey:@"data"];
-			if (responseData)
+//			NSLog(@"Got data: %@", responseData);
+            if (responseData)
 			{
 				NSFileHandle *stdoutFileHandle = [NSFileHandle fileHandleWithStandardOutput];
 				[stdoutFileHandle writeData:responseData];
 			}
 		}
+//        NSLog(@"Almost done");
 		
 		// Reactivate the calling app
 		if (!noReactiviation)
@@ -286,6 +290,7 @@ int main (int argc, char * const * argv) {
 		}
 	}
 		
+//    NSLog(@"done");
     // insert code here...
     [pool drain];
     return 0;
