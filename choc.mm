@@ -1,7 +1,15 @@
 #import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
-#define CHOC_VERSION 5
+#define CHOC_VERSION 7
+//#define CHOC_DEBUG_MODE
+
+#ifdef CHOC_DEBUG_MODE
+#define CHOC_DEBUG(...) NSLog(__VA_ARGS__)
+#else
+#define CHOC_DEBUG(...) 
+#endif
+
 
 /*
 	Usage: mate [-awl<number>rdnhv] [file ...]
@@ -72,7 +80,9 @@ void version() {
 //	fprintf(stderr, "choc r1 (2011-02-27)\n");
 //	fprintf(stderr, "choc r2 (2011-05-21)\n");
 //	fprintf(stderr, "choc r3 (2011-12-19)\n", CHOC_VERSION);
-	fprintf(stderr, "choc r%d (2012-02-27)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r5 (2012-02-27)\n", CHOC_VERSION);
+
+	fprintf(stderr, "choc r%d (2012-03-06)\n", CHOC_VERSION);
 }
 
 int main (int argc, char * const * argv) {
@@ -187,7 +197,7 @@ int main (int argc, char * const * argv) {
 	}
     
 	NSString *identifier = [NSString stringWithFormat:@"%lf", [NSDate timeIntervalSinceReferenceDate]];
-	
+    CHOC_DEBUG(@"token = '%@'", identifier);
 	NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
 	[userInfo setValue:[remainingOptions copy] forKey:@"files"];
 	if (inData)
@@ -220,7 +230,7 @@ int main (int argc, char * const * argv) {
 		// How many seconds do we wait?
 		NSRunLoop *theRL = [NSRunLoop currentRunLoop];
 		
-		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		ChocWaiter *waiter = [[[ChocWaiter alloc] init] runWorkspace];
 		
 		NSDictionary *response = nil;
@@ -254,9 +264,11 @@ int main (int argc, char * const * argv) {
 	
 	if (shouldWait)
 	{
+        CHOC_DEBUG(@"is waiting");
+        
 		NSRunLoop *theRL = [NSRunLoop currentRunLoop];
 		
-		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		ChocWaiter *waiter = [[[ChocWaiter alloc] init] run:identifier];
 		
 		NSDictionary *response = nil;
@@ -267,6 +279,7 @@ int main (int argc, char * const * argv) {
 				break;
 			
 //			NSLog(@"response: %d", response);
+            CHOC_DEBUG(@"   response = %@", response);
 			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 		
@@ -274,14 +287,15 @@ int main (int argc, char * const * argv) {
 		if (!stdout_isa_tty)
 		{
 			NSData *responseData = [response objectForKey:@"data"];
-//			NSLog(@"Got data: %@", responseData);
+			CHOC_DEBUG(@"   got data: %@", responseData);
             if (responseData)
 			{
 				NSFileHandle *stdoutFileHandle = [NSFileHandle fileHandleWithStandardOutput];
 				[stdoutFileHandle writeData:responseData];
+                [stdoutFileHandle closeFile];
 			}
 		}
-//        NSLog(@"Almost done");
+        CHOC_DEBUG(@"almost done");
 		
 		// Reactivate the calling app
 		if (!noReactiviation)
@@ -290,6 +304,7 @@ int main (int argc, char * const * argv) {
 		}
 	}
 		
+    CHOC_DEBUG(@"end");
 //    NSLog(@"done");
     // insert code here...
     [pool drain];
