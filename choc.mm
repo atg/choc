@@ -1,7 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
-#define CHOC_VERSION 7
+#define CHOC_VERSION 8
 //#define CHOC_DEBUG_MODE
 
 #ifdef CHOC_DEBUG_MODE
@@ -81,8 +81,10 @@ void version() {
 //	fprintf(stderr, "choc r2 (2011-05-21)\n");
 //	fprintf(stderr, "choc r3 (2011-12-19)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r5 (2012-02-27)\n", CHOC_VERSION);
-
-	fprintf(stderr, "choc r%d (2012-03-06)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r7 (2012-03-06)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r8 (2012-05-06)\n", CHOC_VERSION);
+    
+	fprintf(stderr, "choc r%d (2012-05-06)\n", CHOC_VERSION);
 }
 
 int main (int argc, char * const * argv) {
@@ -209,22 +211,17 @@ int main (int argc, char * const * argv) {
 	
 	BOOL isLaunched = NO;
 	NSArray *runningApps = [[NSWorkspace sharedWorkspace] launchedApplications];
-	for (NSDictionary *rapp in runningApps)
-	{
+	for (NSDictionary *rapp in runningApps) {
 		NSString *bident = [rapp valueForKey:@"NSApplicationBundleIdentifier"];
-		if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"])
-		{
+		if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"]) {
 			isLaunched = YES;
 			break;
 		}
 	}
 	
 	// Has launched?
-	if (!isLaunched)
-	{
-        
-        /* NSRunningApplicatioN* app = [[NSWorkspace sharedWorkspace] launchApplicationAtURL:<#(NSURL *)#> options:<#(NSWorkspaceLaunchOptions)#> configuration:<#(NSDictionary *)#> error:<#(NSError **)#>]; */
-        
+	if (!isLaunched) {
+                
 		[[NSWorkspace sharedWorkspace] launchApplication:@"Chocolat"];
 		
 		// How many seconds do we wait?
@@ -235,27 +232,34 @@ int main (int argc, char * const * argv) {
 		
 		NSDictionary *response = nil;
 		
-		while (1)
-		{
-			if (response = [waiter gotResponse])
-			{
+		while (1) {
+			if (response = [waiter gotResponse]) {
 				NSString *bident = [[response valueForKey:@"NSWorkspaceApplicationKey"] valueForKey:@"bundleIdentifier"];
-				if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"])
-				{
-					// sleep(1);
-                    // [NSThread sleepForTimeInterval:0.1];
+				if ([[bident lowercaseString] isEqual:@"net.fileability.chocolat"] || [[bident lowercaseString] isEqual:@"com.chocolatapp.chocolat"] || [[bident lowercaseString] isEqual:@"com.fileability.chocolat"]) {
                     
 					break;
 				}
 			}
-//			NSLog(@"Waiting to launch");
+
 			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 	}
-//	NSLog(@"Launched");
+
     if (shouldBlindLaunch) {
-        [[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] activateWithOptions:0];
+        [[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
         
+        // How many seconds do we wait?
+		NSRunLoop *theRL = [NSRunLoop currentRunLoop];
+		
+		[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+		NSTimeInterval t0 = [NSDate timeIntervalSinceReferenceDate];
+        while ([NSDate timeIntervalSinceReferenceDate] - t0 < 2.0) {
+            if ([[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] isActive])
+                break;
+            
+			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
+		}
+
         [pool drain];
         return 0;
     }
