@@ -244,7 +244,7 @@ int main (int argc, char * const * argv) {
 			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 	}
-
+    
     if (shouldBlindLaunch) {
         [[[NSRunningApplication runningApplicationsWithBundleIdentifier:@"com.chocolatapp.Chocolat"] lastObject] activateWithOptions:NSApplicationActivateIgnoringOtherApps];
         
