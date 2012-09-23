@@ -1,7 +1,5 @@
-#import <Cocoa/Cocoa.h>
-#import <getopt.h>
+#import "choc.h"
 
-#define CHOC_VERSION 8
 //#define CHOC_DEBUG_MODE
 
 #ifdef CHOC_DEBUG_MODE
@@ -62,6 +60,7 @@ void help() {
 "Options:\n"
 " -a, --async\t\tDo not wait for the user to close the file in Chocolat. [default if output is ignored]\n"
 " -w, --wait\t\tWait for file to be closed by Chocolat. [default if output is piped]\n"
+" -l, --line <num>\t\tJump to the a specific line in the file.\n"
 //" -d, --change-dir\tChange Chocolat's working directory to that of the file.\n"
 " -n, --no-reactivation\tAfter editing with -w, do not reactivate the calling app.\n"
 " -h, --help\t\tShow this information.\n"
@@ -83,8 +82,9 @@ void version() {
 //	fprintf(stderr, "choc r5 (2012-02-27)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r7 (2012-03-06)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r8 (2012-05-06)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r9 (2012-09-22)\n", CHOC_VERSION);
     
-	fprintf(stderr, "choc r%d (2012-05-06)\n", CHOC_VERSION);
+	fprintf(stderr, "choc r%d (2012-09-22)\n", CHOC_VERSION);
 }
 
 int main (int argc, char * const * argv) {
@@ -119,13 +119,15 @@ int main (int argc, char * const * argv) {
 	int i = 0;
 	
 	id previousapp = [NSRunningApplication currentApplication];
-	
+    NSInteger linenum = 0;
+    
 	while (1)
 	{
     	static struct option long_options[] = {
         	/* These options set a flag. */
 	        {"async",			no_argument, 0,	'a'},
 	        {"wait",			no_argument, 0,	'w'},
+	        {"line",		    required_argument, 0, 'l'},
 	        {"change-dir",		no_argument, 0,	'd'},
 		    {"no-reactivation",	no_argument, 0,	'n'},
 	        {"help",			no_argument, 0,	'h'},
@@ -133,7 +135,7 @@ int main (int argc, char * const * argv) {
         	{0, 0, 0, 0}
         };
         		
-		char c = getopt_long(argc, argv, "awdnhv",
+		char c = getopt_long(argc, argv, "awl:dnhv",
 						long_options, &option_index);
 		
 		i++;
@@ -142,6 +144,10 @@ int main (int argc, char * const * argv) {
 			userAsync = YES;
 		else if (c == 'w')
 			userWait = YES;
+        else if (c == 'l') {
+            linenum = optarg ? [[NSString stringWithUTF8String:optarg] integerValue] : 0;
+            i++;
+        }
 		else if (c == 'd')
 			shouldChangeDir = YES;
 		else if (c == 'n')
@@ -158,13 +164,13 @@ int main (int argc, char * const * argv) {
 			exit(0);
 		}
 		else if (c == '?')
-		{
 			break;
+        else if (c == ':') {
+			help();
+			exit(1);
 		}
 		else if (c == -1)
-		{
 			break;
-		}
 	}
 	
 	if (userWait)
@@ -182,7 +188,21 @@ int main (int argc, char * const * argv) {
 	{
 		const char *opt = argv[i++];
 		NSString *p = [[[NSString alloc] initWithUTF8String:opt] autorelease];
-		p = [[[NSURL fileURLWithPath:p] path] stringByStandardizingPath];
+		
+        NSArray* components = [p componentsSeparatedByString:@":"];
+        if ([components count] >= 2) {
+            NSString* rightComponent = [components objectAtIndex:[components count] - 1];
+        
+            NSMutableArray* leftComponents = [components mutableCopy];
+            [leftComponents removeLastObject];
+            NSString* leftComponent = [leftComponents componentsJoinedByString:@":"];
+            
+            linenum = [rightComponent integerValue];
+            
+            p = leftComponent;
+        }
+        
+        p = [[[NSURL fileURLWithPath:p] path] stringByStandardizingPath];
 		
 		[remainingOptions addObject:p];
 	}
@@ -202,7 +222,10 @@ int main (int argc, char * const * argv) {
     CHOC_DEBUG(@"token = '%@'", identifier);
 	NSMutableDictionary *userInfo = [[NSMutableDictionary alloc] init];
 	[userInfo setValue:[remainingOptions copy] forKey:@"files"];
-	if (inData)
+	if (linenum > 0 && [[userInfo objectForKey:@"files"] count] <= 1) {
+        [userInfo setValue:[NSNumber numberWithInteger:linenum] forKey:@"linenum"];
+    }
+    if (inData)
 		[userInfo setValue:inData forKey:@"data"];
 	[userInfo setValue:[NSNumber numberWithBool:shouldChangeDir] forKey:@"change-working-directory"];
 	
