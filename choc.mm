@@ -60,7 +60,7 @@ void help() {
 "Options:\n"
 " -a, --async\t\tDo not wait for the user to close the file in Chocolat. [default if output is ignored]\n"
 " -w, --wait\t\tWait for file to be closed by Chocolat. [default if output is piped]\n"
-" -l, --line <num>\t\tJump to the a specific line in the file.\n"
+" -l, --line <num>\tJump to the a specific line in the file.\n"
 //" -d, --change-dir\tChange Chocolat's working directory to that of the file.\n"
 " -n, --no-reactivation\tAfter editing with -w, do not reactivate the calling app.\n"
 " -h, --help\t\tShow this information.\n"
