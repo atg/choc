@@ -2,6 +2,8 @@
 
 //#define CHOC_DEBUG_MODE
 
+#pragma clang 
+
 #ifdef CHOC_DEBUG_MODE
 #define CHOC_DEBUG(...) NSLog(__VA_ARGS__)
 #else
@@ -83,14 +85,19 @@ void version() {
 //	fprintf(stderr, "choc r7 (2012-03-06)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r8 (2012-05-06)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r9 (2012-09-22)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r10 (2013-11-19)\n", CHOC_VERSION);
     
-	fprintf(stderr, "choc r%d (2012-09-22)\n", CHOC_VERSION);
+	fprintf(stderr, "choc r%d (2013-11-19)\n", CHOC_VERSION);
 }
 
-int main (int argc, char * const * argv) {
-    
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    
+int choc(int argc, char * const * argv);
+
+int main(int argc, char * const * argv) {
+    @autoreleasepool {
+        return choc(argc, argv);
+    }
+}
+int choc(int argc, char * const * argv) {
 	BOOL shouldWait = NO;
 	
 	int userWait = NO;
@@ -183,11 +190,11 @@ int main (int argc, char * const * argv) {
 		shouldWait = NO;
 	
 	//Get remaining options
-	NSMutableArray *remainingOptions = [[[NSMutableArray alloc] init] autorelease];
+	NSMutableArray *remainingOptions = [[NSMutableArray alloc] init];
 	while (i < argc)
 	{
 		const char *opt = argv[i++];
-		NSString *p = [[[NSString alloc] initWithUTF8String:opt] autorelease];
+		NSString *p = [[NSString alloc] initWithUTF8String:opt];
 		
         NSArray* components = [p componentsSeparatedByString:@":"];
         if ([components count] >= 2) {
@@ -283,7 +290,6 @@ int main (int argc, char * const * argv) {
 			[theRL runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.2]];
 		}
 
-        [pool drain];
         return 0;
     }
     
@@ -334,7 +340,6 @@ int main (int argc, char * const * argv) {
     CHOC_DEBUG(@"end");
 //    NSLog(@"done");
     // insert code here...
-    [pool drain];
     return 0;
 }
 
