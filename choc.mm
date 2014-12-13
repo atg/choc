@@ -86,8 +86,9 @@ void version() {
 //	fprintf(stderr, "choc r8 (2012-05-06)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r9 (2012-09-22)\n", CHOC_VERSION);
 //	fprintf(stderr, "choc r10 (2013-11-19)\n", CHOC_VERSION);
-    
-	fprintf(stderr, "choc r%d (2013-11-19)\n", CHOC_VERSION);
+//	fprintf(stderr, "choc r11 (2014-10-21)\n", CHOC_VERSION);
+
+	fprintf(stderr, "choc r%d (2014-10-21)\n", CHOC_VERSION);
 }
 
 int choc(int argc, char * const * argv);

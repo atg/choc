@@ -1,4 +1,4 @@
 #import <Cocoa/Cocoa.h>
 #import <getopt.h>
 
-#define CHOC_VERSION 10
+#define CHOC_VERSION 11
